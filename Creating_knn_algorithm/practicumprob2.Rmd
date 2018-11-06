@@ -1,0 +1,107 @@
+---
+title: "Practicum prob2 and prob3"
+output: html_notebook
+---
+```{r}
+install.packages("lmtest", repos = "http://cran.us.r-project.org")
+chooseCRANmirror(graphics=FALSE, ind=1)
+knitr::opts_chunk$set(echo = TRUE)
+install.packages("backports")
+kc<-read.csv("C://Users//pandy//OneDrive//Documents//DBMS//kc_data.csv",header=T)
+str(kc) #This function lets us know the number of cases and we have 21613 cases and 21 features
+head(kc)
+
+kc_n<- data.frame(scale(kc[,4:21], center = TRUE, scale = TRUE),kc[3])#normalising
+library(caret)
+kc_train<-createDataPartition(kc_n$price,p=0.9,list=FALSE)
+kctraindx<-kc_n[kc_train,]
+kcvaliddx<-kc_n[-kc_train,]
+
+
+```
+```{r}
+library(FNN)
+set.seed(222)
+kc_knn <- knn.reg(kctraindx[1:18],kcvaliddx[1:18],kctraindx[19],k=131,algorithm=c("kd_tree","cover_tree","brute")) 
+error<-as.data.frame(kcvaliddx$price-kc_knn$pred) #evaluating the model by error
+mean(abs(error$`kcvaliddx$price - kc_knn$pred`)) #mean absolute deviation 
+
+x<-c(2,2.5,1800,6000,1,0,0,4,5,1800,0,2017,0,98029,47.5208,-122.393,1800,6000)
+#new house detail values to forecast the price
+x1<-rbind.data.frame(kc[,4:21],x) 
+kc_n1<- scale(x1, center = TRUE, scale = TRUE)
+x2<-c(-1.4738171,0.5001947,-0.3047476,-0.2198608,-0.9153669,-0.08716858,-0.3057447, 0.9074943,-2.2599668,0.01401904,-0.658644,1.565742,-0.2101184,-0.9146379,-0.2832743,-1.2717096,-0.2721772,-0.2478847) #normalised new details
+
+set.seed(2221)
+kc_knn1 <- knn.reg(kctraindx[1:18],x2,kctraindx[19],k=131,algorithm=c("kd_tree","cover_tree","brute")) 
+
+kc_knn1$pred #predicted value of house as per new details
+```
+
+
+*Problem3
+```{r}
+
+otime<-read.csv("C://Users//pandy//OneDrive//Documents//data_mining//occupancyratestimeseries.csv",header=T)
+otime_train<-otime[1:120,]
+otime_test<-otime[121:166,]
+
+
+
+```
+
+```{r}
+#linear trendline model
+linear<-lm(otime$OccupancyRate~otime$Period )
+summary(linear)
+print(linear)
+tail(otime)
+#F.p <- 34.9419 + 0.0151*t
+F.167 <- 34.9419 + 0.0151*167
+F.167
+
+otime$F.p<-0
+otime$E.p<-0
+for(i in 1:nrow(otime)){
+  otime$F.p[i] <- 0.0151*otime$Period[i] + 34.9419
+  otime$E.p[i] <- (otime[i,2]-otime$F.p[i])
+}
+mean(abs(otime$E.p))
+#mean absolute deviation= 6.256278 
+#comment on bias is that forecasted values are under predicted in this regression model as
+#we maximum number of values whose predicted values are lesser than the actual values
+
+
+```
+
+```{r}
+#Exponential smoothing
+otime1<-otime
+otime1$Ft<-0
+
+otime1$E<-0
+otime1$Ft[1]<-otime1[1,2]
+otime1$Ft[1]
+otime1$E[1]<-otime1[1,2]- otime1$Ft[1]
+a<-0.5
+for(i in 2:nrow(otime1)){
+  otime1$Ft[i]<-otime1$Ft[i-1]+ a*otime1$E[i-1]
+  otime1$E[i]<-otime[i,2]-otime1$Ft[i]}
+#this loop is for calculating values of forecast from row 2 to the last row of the dataset
+#given. Forecast(exponential smoothing)F(t)= F(t-1) + a*E(t-1)
+#Error = Given value of Occupancy Rates -  Forecasted value
+n<-nrow(otime1)
+Forecast<-otime1$Ft[n]+a*otime1$E[n]
+Forecast
+sd <- sd(otime$OccupancyRate)
+sd
+lowerlimit <- Forecast -(1.96*sd)
+upperlimit <- Forecast+(1.96*sd)
+lowerlimit
+upperlimit
+mean(abs(otime1$E)) 
+#We see that we get lesser deviation in error in exponential smoothing as compared to linear trendline model. Hence, we select this forecasting model 
+#The forecasted value is within the 95% Confidence interval   
+
+```
+

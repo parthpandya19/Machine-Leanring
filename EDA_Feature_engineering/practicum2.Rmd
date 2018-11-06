@@ -1,0 +1,424 @@
+---
+title: "Practicum 2"
+output: html_notebook
+author: "Parth Pandya"
+---
+
+##Problem 1
+```{r}
+census<- read.csv("census.csv",na.strings=c(""," "," ?","NA"))
+
+str(census)
+
+
+#worksclass,education,marital,occupation,relationship,race,sex,country are categorical features of our dataset
+
+
+```
+From summary we can see that our dataset has unknown values denoted by ' ?' character. Features which have unknown values are: Workclass, occupation and country. 
+
+We need to apply a tranformation by converting the character symbol to NA.
+we will use na.strings(). It returns the dataset with missing values instead of the different characters used in our dataset as unknown values.
+```{r}
+Mode <- function(x) {
+  ux <- unique(x)
+  ux[which.max(tabulate(match(x, ux)))]
+}
+Mode(cens$workclass)
+table(cens$workclass)
+we<- census [is.na(workclass),workclass := "Private"]
+for(i in "workclass")
+        set(census,i = which(is.na(census[[i]])),j=i,value = Mode(census$workclass,na.rm = T))
+
+
+```
+
+```{r}
+library(mice)
+md.pattern(census)
+census$income<-as.factor(ifelse(as.character(census$pred)==" <=50K",0,1))
+#install.packages("VIM")
+library(VIM)
+mice_plot <- aggr(census, col=c('navyblue','yellow'),
+                    numbers=TRUE, sortVars=TRUE,
+                    labels=names(census), cex.axis=.7,
+                    gap=3, ylab=c("Missing data","Pattern"))
+imputed_Data <- mice(census, m=5, maxit = 5, method = 'pmm', seed = 500)
+model1<-complete(imputed_Data,2)
+
+#building another model usign kNN to impute the data as mice takes longer computational time.
+
+model2<-kNN(census,k=180)
+model2<-subset(model2,select = age:pred) #removing non significant columns from the dataset as knn() function concats columns to our original dataset
+```
+
+* Frequency and likelihood table
+
+```{r}
+library(plyr)
+frequency<- count(model2,c("workclass","education","marital","occupation","relationship","race","sex","country","pred"))
+
+likelihood<- prop.table(frequency$freq)
+
+diab<-read.csv("diabetes.csv")
+
+diab$d<-as.factor(diab$d)
+
+diab_glm<-glm(d~.,data=diab,family=binomial)
+
+predict_diab<-predict(diab_glm,diab)
+predict_diab<-ifelse(predict_diab>0.5,1,0)
+confusionMatrix(predict_diab,diab$d)
+```
+
+
+```{r}
+
+
+
+```
+
+```{r}
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+##Problem2
+
+```{r}
+
+uffi<-read.csv("uffidata.csv")
+
+#install.packages("DMwR")
+#install.packages("Rlof")
+#install.packages("lattice")
+#install.packages("grid")
+library(DMwR)
+summary(uffi)
+
+uffi<-na.exclude(uffi) #excluding missing values
+
+#outliers for lot area
+outlier.scores <- lofactor(uffi$Lot.Area, k=5)
+plot(density(outlier.scores))
+x<-which(is.na(uffi))
+outliers <- order(outlier.scores, decreasing=T)[1:5]
+uffi$Lot.Area[outliers]
+
+#outliers for living area
+outlier.scores1 <- lofactor(uffi$Living.Area_SF, k=5)
+plot(density(outlier.scores1))
+outliers1 <- order(outlier.scores1, decreasing=T)[1:5]
+uffi$Living.Area_SF[outliers1]
+
+#outliers for sale price
+outlier.scores2 <- lofactor(uffi$Sale.Price, k=5)
+plot(density(outlier.scores2))
+outliers2 <- order(outlier.scores2, decreasing=T)[1:5]
+uffi$Sale.Price[outliers2]
+
+
+
+
+```
+
+From summary() we can see that the mean and median value for sale price, lot area and living area have major differnce which indicates that these features consist of outliers.
+By inspecting the values of outliers we realise that they are not unusual or random values or an error. Hence, we cannot eliminate these outliers as this would bias the model prediction to the mean value and will result in loss of some statistically significant data.
+
+```{r}
+
+hist(uffi$Sale.Price)
+
+```
+we can see from the histogram that the data is skewed towards the right.
+It has some outliers but they are not any random values or errors
+
+```{r}
+paircor<-pairs.panels(uffi[c("Sale.Price","UFFI.IN","Year.Sold","Bsmnt.Fin_SF","Lot.Area","Living.Area_SF","Central.Air","Pool","X45.Yrs.","Brick.Ext","Enc.Pk.Spaces")])
+cor(uffi$Sale.Price,uffi$UFFI.IN)
+
+
+```
+**What are the correlations to the response variable and are there collinearities?**
+
+* we can see the correlations between all the variables with response variables.
+
+* There is some collinearity between Lot area and living area and lot area and basement area, negative collinearity between house greater than 45 years and basement finish.
+
+
+**Is the presence or absence of UFFI alone enough to predict the value of a residential property?**
+
+* The presence of UFFi is essential to predict the value of the property but it cannot alone predict the value. Other features like year sold, lot area, living area and enclosed parking spaces are more significant for valuation
+
+**Is UFFI a significant predictor variable of selling price when taken with the full set of variables available?**
+
+* As mentioned previously it has some negative correlation with sale price not enough to alone predict the value. The presence of UFFI will lead to slightly lower price of the house as it is negatively correlated. It is does not much of significance as much as other predictors
+
+Using PCA to see correlation between feature variables and response variable
+```{r}
+pca1<-princomp(uffi,scores = TRUE,cor=TRUE)
+loadings(pca1)
+plot(pca1)
+biplot(pca1)
+pca1$scores[1:10,]
+
+fact1<-factanal(uffi,factor = 4)
+
+
+
+q<-cbind(uffi$Sale.Price,uffi$UFFI.IN)
+pca2<-princomp(q,scores = TRUE,cor=TRUE)
+
+biplot(pca2)
+
+
+
+```
+We can infer from the biplot that the angle between is not that acute and it has negative correlation. Hence UFFi is not alone enough to predict the sale price of the house.
+```{r}
+gmodel<-lm(Sale.Price~.,data=uffi)
+alldata_n <- as.data.frame(lapply(alldata[c('age','balance','day','duration','campaign','pdays','previous')], normalize))
+
+z_score<- abs(scale(bank$pdays,center = TRUE,scale=TRUE))
+
+
+gmodel1<-lm(Sale.Price~ Year.Sold +UFFI.IN+ Brick.Ext + Bsmnt.Fin_SF+Lot.Area + Enc.Pk.Spaces + Living.Area_SF + Pool,data=uffi)
+#year.Sold,UFFI.IN, Brick.Ext , Lot.Area , Enc.Pk.Spaces , Living.Area_SF , Pool
+#backfitting
+gmodel1<-lm(Sale.Price~ Year.Sold +UFFI.IN+ Brick.Ext +Lot.Area + Enc.Pk.Spaces + Living.Area_SF + Pool,data=uffi)
+
+
+gmodel2<-lm(Sale.Price~ Year.Sold + Brick.Ext +Lot.Area + Enc.Pk.Spaces + Living.Area_SF + Pool,data=uffi)
+
+gmodel3<-lm(Sale.Price~ +UFFI.IN+ Brick.Ext +X45.Yrs. +Bsmnt.Fin_SF +Lot.Area + Enc.Pk.Spaces + Living.Area_SF +Central.Air+ Pool,data=uffi)
+summary(gmodel1)
+
+#we will include all the features even though UFFI has no significnt p value.
+
+
+aicmodel<-step(lm(Sale.Price~.,data=uffi),direction = "backward")
+
+
+
+
+#prediction with UFFI
+
+predictmodel1<-predict(gmodel1,uffi[c(2,4,5,8,9,10,12)])
+
+residuals(gmodel1)
+rmse.gmodel1<- sqrt(mean(residuals(gmodel1)^2))
+
+#prediction without UFFI
+
+predictmodel2<-predict(gmodel2,uffi[c(2,5,8,9,10,12)])
+rmse.gmodel2<- sqrt(mean(residuals(gmodel2)^2))
+
+#prediction for model3
+predictmodel3<-predict(gmodel3,uffi[c(4:12)])
+rmse.model3<-sqrt(mean(residuals(gmodel3)^2))
+```
+**On average, how do we expect UFFI will change the value of a property?**
+
+* UFFI presence does not impact the price of houses in the model we have built. But based on many negative press articles causing buyer resistance and the future homeowners, UFFI insulated houses are worth substantially less.
+concern over possible health consequences,
+* In that case the costing of a house can change as the cost of treatment is around $10,000. Therefore it has been noticed in sales over the years that houses which have UFFI present are sold at lower cost.
+* Some sales are made after removing formely insulated-UFFI. SUch sales had only 10% - 15% loss. This losss is again due to buyer resistance of formey present UFFi. Hence, It will be necessary for appraisers to monitor UFFI and market value on an ongoing basis.
+
+
+
+
+
+If the home in question is older than 45 years old, doesn't have a finished basement, has a lot area of 5000 square feet, has a brick exterior, 2 enclosed parking spaces, 1700 square feet of living space, central air, and no pool, what is its predicted value and what are the 95% confidence intervals of this home with UFFI and without UFFI?
+
+
+
+
+```{r}
+UFFI.IN=1
+X45.Yrs.=1
+Bsmnt.Fin_SF=0
+Lot.Area=5000
+Brick.Ext=1
+Enc.Pk.Spaces=2
+Living.Area_SF=1700
+Central.Air=1
+Pool=0
+UFFI.IN2=0
+Year.Sold=2009
+f<-data.frame(UFFI.IN,X45.Yrs.,Bsmnt.Fin_SF,Lot.Area,Brick.Ext,Enc.Pk.Spaces,Living.Area_SF,Central.Air,Pool)
+
+
+
+newpredict<-predict(gmodel3,f)
+print(newpredict)
+
+f2<-data.frame(UFFI.IN2,X45.Yrs.,Bsmnt.Fin_SF,Lot.Area,Brick.Ext,Enc.Pk.Spaces,Living.Area_SF,Central.Air,Pool)
+newpredict2<-predict(gmodel3,f2)
+print(newpredict2)
+
+ff1<-data.frame(Year.Sold,UFFI.IN2, Brick.Ext , Lot.Area , Enc.Pk.Spaces , Living.Area_SF , Pool)
+
+ff<-data.frame(Year.Sold,UFFI.IN, Brick.Ext , Lot.Area , Enc.Pk.Spaces , Living.Area_SF , Pool)
+
+newpredict<-predict(gmodel1,ff1)
+newpredict1<-predict(gmodel1,ff)
+
+```
+
+Calculating CI
+
+```{r}
+se<-20190 #we get value of standard error from summary of final model
+upperlimit<-print(newpredict+(1.96*se))
+lowerlimit<-print(newpredict-(1.96*se))
+
+
+upperlimit1<-print(newpredict1+(1.96*se))
+lowerlimit1<-print(newpredict1-(1.96*se))
+
+
+```
+
+The CI is (120951.1 ,200095.9)
+
+**If $215,000 was paid for this home, by how much, if any, did the client overpay, and how much compensation is justified due to overpayment**
+
+* The client did overpay if we select the predicted value given by our model. which is 181702.5. 
+Overpaid by 33297.5 and should get a compensation of this amount.
+There is no difference in confidence interval by including UFFi and excluding UFFI
+
+
+
+
+#Problem3
+```{r}
+titanic <- fread("titanic_data.csv",na.strings = c(""," ",NA,"NA"))
+
+#str(titanic)
+#summary(titanic)
+
+
+
+```
+From str() and summary() we can infer that Cabin and age has many missing values and Embark has couple of values missing.
+The dataset consists of many different classes: factor,int and num
+
+exploring data and performing transformation before splitting the dataset
+From summary we can conclude that fare feature is not idstributed normally as there is a significant difference between mean and median value.
+Also, we can extract the title section from names attribute as it can be an important factor for our prediction.
+```{r}
+#extracting the second element from Name which consists of titles
+library(stringr)
+ titanic [,title := strsplit(Name,split = "[,.]")]
+ titanic[,title := ldply(.data = title,.fun = function(x) x[2])]
+ titanic[,title := str_trim(title,side = "left")]
+
+ 
+ #replacing the 2nd element title with Mr and Mrs to reduce the number of factors as all the titles have similar meaning 
+ titanic [,title := replace(title, which(title %in% c("Capt","Col","Don","Jonkheer","Major","Rev","Sir")), "Mr"),by=title]
+ titanic [,title := replace(title, which(title %in% c("Lady","Mlle","Mme","Ms","the Countess","Dr","Dona")),"Mrs"),by=title]
+ 
+ 
+#binary notation for ticket ID beacuase some have numbers while some have numbers and letters contained as well 
+ titanic [,abs_col := strsplit(x = Ticket,split = " ")]
+titanic[,abs_col := ldply(.data = abs_col,.fun = function(x)length(x))]
+ titanic[,abs_col := ifelse(abs_col > 1,1,0)]
+
+ 
+
+```
+Imputing missing values
+```{r}
+for(i in "Age")
+        set(titanic,i = which(is.na(titanic[[i]])),j=i,value = median(titanic$Age,na.rm = T))
+
+titanic <- titanic[!is.na(Embarked)] #removing 2 rows with missing emarked values
+
+for(i in "Fare")
+      set(titanic,i = which(is.na(titanic[[i]])),j=i,value = median(titanic$Fare,na.rm = T))
+
+
+titanic [is.na(Cabin),Cabin := "Missing"]
+
+#since fare attribute is skewed towards right we will try to normalise the data by using log fucntion
+titanic$Fare <- log(titanic$Fare + 1)
+hist(titanic$Fare)
+
+```
+
+```{r}
+
+summary(titanic$Survived)
+str(titanic$Survived)
+
+tmodel<-glm(Survived~., family = binomial, data = titanic[,-c("PassengerId","Name","Ticket")])
+
+
+```
+
+We see that cabin and embarked ahve lower statistical significance. Hecne we will build a model by elminating these features by backfitting.
+```{r}
+ tmodel1 <- glm(Survived ~ Pclass + Sex + Age + SibSp + Fare + title, data = titanic,family = binomial(link="logit"))
+```
+we can see that AIC of this model is significantly less which indicates that is a better model than one which made previously.
+
+Now as we know that this
+```{r}
+
+
+library(caret)
+split <- createDataPartition(y = titanic$Survived,p = 0.7,list = FALSE)
+
+trainx <- titanic[split] 
+test <- titanic[-split]
+
+smodel <- glm(Survived ~ Pclass + Sex + Age + SibSp + Fare + title, data = trainx[,-c("PassengerId","Name","Ticket")],family = binomial)
+
+spredict <- predict(smodel,newdata = test,type = "response")
+spredict<-ifelse(spredict>0.5,1,0)
+
+confusionMatrix(spredict,test$Survived)
+```
+we get an accuracy of 80.83%
+We will try to improve our model by changing our cut off value from 0.5 to 0.6
+```{r}
+spredict1 <- predict(smodel,newdata = test,type = "response")
+spredict2<-ifelse(spredict1>0.6,1,0)
+
+confusionMatrix(spredict2,test$Survived)
+
+```
+Accuracy has improved minimally and we get accuracy as 81.58% Hence our model has improved.
+
+
+
+#Problem4
+
+** Elaborate on the use of kNN and Naive Bayes for data imputation. Explain in reasonable detail how you would use these algorithms to impute missing data and why it can work**
+
+* kNN imputation can be used for both categorical and numeric variables we can get a good estimate of values by using kNN. 
+* It searches for the most frequent value in qualitative attributes and imputes the missing value with them.
+* For quantitative attributes it uses the mean of those nearest neighbors for imputation.
+* Selecting the value of k depends on the dataset and entire dataset needs to be searched for imputation.
+*Hence if a dataset is large kNN's efficiency reduces a lot as time complexity of kNN is O(n^2) which will take longer time for computation of the missing values.
+
+* Naive bayes has a faster computational time. 
+* It works well for classification cases where the target variable is a categorical variable. 
+* Also works well if the dataset is large for imputation.
+* When having prior information about the data (i.e., dataset), Bayesian networks can be automatically generated and efficiently used to predict the most suitable values to substitute the missing ones.
+* Naive Bayesian classifier is the least sensitive to missing data.
+* An example would be to classify the missing values of an attribute like toss of a single coin three times and we do not know the outcome of the second toss. To impute this missing value we will find probability of heads and tails which is 50%.
+
+

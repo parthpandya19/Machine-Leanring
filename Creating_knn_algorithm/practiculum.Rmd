@@ -1,0 +1,284 @@
+---
+title: Practicum1
+output: html_notebook
+author: Parth Pandya
+---
+
+```{r}
+install.packages("backports")
+#Question 1 and 2
+glass<- read.csv("C://Users//pandy//OneDrive//Documents//data_mining//glass.csv",header=T)
+
+```
+
+```{r}
+#Question3
+x<-glass$Na
+h<-hist(x,main = "histogram normal curve")
+xfit<-seq(min(x),max(x),length=40) 
+yfit<-dnorm(xfit,mean=mean(x),sd=sd(x)) 
+yfit <- yfit*diff(h$mids[1:2])*length(x) 
+lines(xfit, yfit, col="blue", lwd=2)
+#given data is normally distributed
+#kNN is a non parametric algorithm. It does not depend on the the distribution of underlying data. It uses the training phase to determine the testing phase irrelevant of the distribution within the training phase.
+```
+```{r}
+#Question4
+glass<- glass[-1] #Removing the first column ID
+normalize <- function(x) {
+return ((x - min(x)) / (max(x) - min(x))) } #normalizing the function with Min-Max method
+glass_n <- as.data.frame(lapply(glass[1:2], normalize)) #normalizing the first two columns i.e. RI and Na column
+
+```
+
+
+```{r}
+#Question 5
+#str(glass)
+glass_nz<- scale(glass[,3:9], center = TRUE, scale = TRUE)
+glass1<-data.frame(glass_n,glass_nz,glass[,10])
+
+#merging the two normlized dataframes
+```
+
+```{r}
+#Question6
+#install.packages(pkgs = "caret", 
+             #dependencies = c("Depends", "Imports"))
+#install.packages("lattice")
+#install.packages("ggplot2")
+install.packages("gower")
+library(caret)
+set.seed(3133)
+Intrain<- createDataPartition(glass1[,10],p=0.5,list=FALSE)
+
+gtrain<-glass1[Intrain,]
+#summary(glass)
+gvalid<-glass1[-Intrain,]
+```
+
+```{r}
+#Question 7
+
+unknown= c(1.51621 , 12.53 , 3.48 , 1.39 , 73.39 , 0.60 , 8.55 , 0.00 ,  0.05)
+#case1 values
+glass_new1<-rbind.data.frame(glass,unknown) #binding new set for normalising
+normalize1 <- function(x) {
+return ((x - min(x)) / (max(x) - min(x))) } #normalizing the function with Min-Max method
+glass_n1 <- as.data.frame(lapply(glass_new1[1:2], normalize1))
+glass_nz1<- scale(glass_new1[,3:9], center = TRUE, scale = TRUE)#normalizing with z-scale
+u1<-c(0.222124671, 0.27067669,0.5498171, -0.1097158 , 0.94996203,0.1574681,-0.2852412, -0.3511339, -0.07176838) #normalized values of unknown case1
+m1<-nrow(glass1)
+d1<-numeric(m1)
+p<-glass1[,1:9]
+q<-u1
+d1<-0
+dist<-function(p,q){
+  
+  for(i in 1:length(p)){
+    d1<-d1+(p[i]-q[i])^2
+  }
+ dist<- sqrt(d1)
+}
+x<-dist(p,q) #Calculating the distance between two rows of data
+#x
+
+
+```
+
+
+```{r}
+ds<-numeric(m1)
+neighbors<-function(x,y){
+  m1<-nrow(glass1)
+  ds<-numeric(m1)
+  for (i in 1:m1){
+    p<- glass1[i,1:9]
+    q<-u1
+    ds[i]<-dist(p,q)
+    
+  }
+  
+  neighbors<-(ds)
+}
+n<-neighbors(glass1,u1) #selecting the neighbors
+#n
+o<-order(n) #order function is used here to return us the nearest neighbors
+kn<-10
+o[1:kn]
+kn.closest<-function(neighbors,kn)
+{ordered.neighbors<-order(neighbors)
+    kn.closest<-ordered.neighbors[1:kn]}
+f<-kn.closest(n,10) #selecting the closest neighbors as per the value of k defined
+f
+Mode<-function(x){
+  ux<-unique(x)
+  ux[which.max(tabulate(match(x,ux)))]
+} #Mode function returns the most repeated types of glass by the neighbors selected
+Mode(glass1[,10])
+knn_<-function(glass1,u1,kn){
+  nb<-neighbors(glass1,u1)
+  f<-kn.closest(nb,kn)
+  knn<-Mode(glass1$glass...10.[f])
+}
+nn1<-knn_(glass1,u1,kn) #knn algorithm function which finds the distance between the unknown value and each row of the dataset and returns value which is most repeated and also which are closest to the unknown data.
+nn1
+#we get the value of type of glass as 1 for case 1
+
+```
+
+
+```{r}
+#Question7 case2
+unknown2<-c(1.5098 ,12.77, 1.85 , 1.81 ,72.69 , 0.59 ,10.01,0.00,0.01)
+glass_new2<-rbind.data.frame(glass,unknown2)
+normalize2 <- function(x) {
+return ((x - min(x)) / (max(x) - min(x))) } #normalizing the function with Min-Max method
+glass_n2 <- as.data.frame(lapply(glass_new2[1:2], normalize2))
+glass_nz2<- scale(glass_new2[,3:9], center = TRUE, scale = TRUE)
+tail(glass_nz2)
+tail(glass_n2)
+u2<-c(0.2221247,0.2706767,-0.5767775, 0.7286506,  0.05031937,  0.1421731,  0.7372751, -0.3511339, -0.4810709)
+m1<-nrow(glass1)
+d2<-numeric(m1)
+p<-glass1[,1:9]
+q<-u2
+d2<-0
+dist<-function(p,q){
+  
+  for(i in 1:length(p)){
+    d2<-d2+(p[i]-q[i])^2
+  }
+ dist<- sqrt(d2)
+}
+x<-dist(p,q)
+#x
+
+
+```
+
+
+```{r}
+ds1<-numeric(m1)
+neighbors<-function(x,y){
+  m1<-nrow(glass1)
+  ds<-numeric(m1)
+  for (i in 1:m1){
+    p<- glass1[i,1:9]
+    q<-u2
+    ds1[i]<-dist(p,q)
+    
+  }
+  
+  neighbors<-(ds1)
+}
+n<-neighbors(glass1,u2)
+#n
+o<-order(n)
+kn<-10
+o[1:kn]
+kn.closest<-function(neighbors,kn)
+{ordered.neighbors<-order(neighbors)
+    kn.closest<-ordered.neighbors[1:kn]}
+f<-kn.closest(n,10)
+f
+Mode<-function(x){
+  ux<-unique(x)
+  ux[which.max(tabulate(match(x,ux)))]
+}
+Mode(glass1[,10])
+knn1<-function(glass1,u2,kn){
+  nb<-neighbors(glass1,u2)
+  f<-kn.closest(nb,kn)
+  knn<-Mode(glass1$glass...10.[f])
+}
+nn2<-knn1(glass1,u2,kn)
+nn2
+#we get the type of glass for case 2 as 6
+```
+
+```{r}
+#question8case1
+glabels<-glass1[,10]
+gntrain<-glass1[,1:9]
+u1
+library(class)
+set.seed(44)
+gvalid_pred1 <- knn(train = gntrain, test = u1,cl =glabels , k=14)
+
+gvalid_pred1
+#we get the prediction as type1 for case1
+
+```
+
+```{r}
+#question8case2
+set.seed(46)
+gvalid_pred2 <- knn(train = gntrain, test = u2,cl =glabels , k=14)
+
+gvalid_pred2
+#we get the prediction as type6 for case2
+
+```
+
+```{r}
+#Question9 and 10
+#labels
+gtrain_labels<-glass1[Intrain,10] 
+gvalid_labels<-glass1[-Intrain,10]
+```
+```{r}
+library(class)
+set.seed(2)
+gvalid_pred <- knn(train = gtrain, test = gvalid, cl = factor(gtrain_labels), k=14)
+#we change the values of k in this command and use confusion matrix to provide us the accuracy acquired by that value of k
+#accuracy
+confusionMatrix(gvalid_pred,gvalid_labels)
+#Accuracy=74.53% when k=14
+#Accuracy=85.85% when k=5,#Accuracy=86.79 when k=6
+#Accuracy=85.85 when k=7,#Accuracy=85.85 when k=8,#Accuracy=86.79 when k=9
+#Accuracy=83.02 when k=10,#Accuracy=81.33 when k=11,#Accuracy=77.36 when k=12
+#Accuracy=76.42 when k=13
+k<-c(5,6,7,8,9,10,11,12,13,14)
+Accuracy<-c(0.8585,0.8679,0.8505,0.8505,0.8679,0.8302,0.8133,0.7736,0.7642,0.7453)
+plot(k,Accuracy,main="k vs Accuracy", xlab = "k",ylab = "Accuracy")
+#optimal value of k is 9 where we get accuracy of 86.79%
+
+
+
+
+```
+
+```{r}
+#question11
+Error <- c(1-Accuracy) 
+Error
+gplot<-data.frame(k,Error) 
+ggplot(gplot,aes(k,Error))+geom_line() #plot k vs Error
+
+```
+
+```{r}
+#question12
+library(gmodels)
+library(class)
+set.seed(5)
+gvalid_pred2 <- knn(train = gtrain, test = gvalid, cl = factor(gtrain_labels), k=14)
+CrossTable(x=gvalid_labels,gvalid_pred2,prop.chisq = FALSE)
+#we use k=14 using class package 
+accuracy_cross<-print((34+32+2+0+0+10)/106)
+
+
+
+```
+
+##Question 13
+
+Run time complexity for w new cases having m features which is very large 
+The Knn algorithm is considered to be lazy learning algorithm as it has to compute distances between each case of training dataset. Hence, in a case where there are m features and w new cases the algorithm will slow down as it has to compute distance between each new case in w for m features with each of the n cases in training data set.
+We can increase the speed of the algorithm by reducing the cases of training dataset.
+
+
+
+
+

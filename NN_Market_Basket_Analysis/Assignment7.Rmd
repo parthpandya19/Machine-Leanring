@@ -1,0 +1,274 @@
+---
+title: "Assignment 7"
+output: html_notebook
+author: "Parth"
+---
+
+```{r}
+concrete<- read.csv("concrete.csv")
+#str(concrete)
+```
+Dataset has 9 features and 1030 observations. Since we need to implement Neural networks, we need to normalise the features because Neural networks
+work best when the input data are scaled to a narrow range around zero, and here,
+we see values ranging anywhere from zero up to over a thousand.
+
+```{r}
+normalize <- function(x) {
+return((x - min(x)) / (max(x) - min(x)))
+}
+concrete_norm <- as.data.frame(lapply(concrete, normalize))
+
+#comparing normalised values wit original dataset
+print(summary(concrete$strength))
+print(summary(concrete_norm$strength))
+```
+Splitting datset
+```{r}
+concrete_train <- concrete_norm[1:773, ]
+concrete_test <- concrete_norm[774:1030, ]
+```
+**Training the model using neuralnet package**
+```{r}
+install.packages("neuralnet")
+library(neuralnet)
+set.seed(2211)
+concrete_model <- neuralnet(strength ~ cement + slag
++ ash + water + superplastic + coarseagg + fineagg + age,
+data = concrete_train)
+plot(concrete_model)
+```
+In this simple model, there is one input node for each of the eight features, followed by a single hidden node and a single output node that predicts the concrete strength.
+
+The weights for each of the connections are also depicted, as are the bias terms
+(indicated by the nodes labeled with the number 1). The bias terms are numeric
+constants that allow the value at the indicated nodes to be shifted upward or
+downward, much like the intercept in a linear equation.
+
+**Evaluating model performance**
+```{r}
+model_results <- compute(concrete_model, concrete_test[1:8])
+predicted_strength <- model_results$net.result
+```
+compute() returns a list with two components: $neurons, which stores the
+neurons for each layer in the network, and $net.result, which stores the predicted
+values.
+```{r}
+cor(predicted_strength, concrete_test$strength)
+dataset(cars)
+cars<-datasets::cars
+```
+cor() to see linear relation between the actual and predicted values
+
+
+**Improving model performance**
+
+Since we had only one hidden node. we will see if our model improves by assigning more number of nodes to the model.
+
+```{r}
+set.seed(2221)
+concrete_model2 <- neuralnet(strength ~ cement + slag + ash + water + superplastic +coarseagg + fineagg + age, data = concrete_train, hidden = 5)
+
+plot(concrete_model2)
+```
+We can see that as compared to our previous model the SSE has decreased a lot and the number of steps have increased substantially which makes the model more complex.
+
+We will evaluate our model just like previous model.
+```{r}
+model_results2 <- compute(concrete_model2, concrete_test[1:8])
+predicted_strength2 <- model_results2$net.result
+print(cor(predicted_strength2, concrete_test$strength))
+
+
+```
+We see that the correlation has decreased but SSE has decreased which was the aim of improving our model
+```{r}
+set.seed(2222)
+concrete_model3 <- neuralnet(strength ~ cement + slag + ash + water + superplastic +coarseagg + fineagg + age, data = concrete_train, hidden = 7)
+plot(concrete_model3)
+
+model_results3 <- compute(concrete_model3, concrete_test[1:8])
+predicted_strength3 <- model_results3$net.result
+print(cor(predicted_strength3, concrete_test$strength))
+
+sqrt(mean(predicted_strength3-concrete_test$strength)^2)
+sqrt(mean(predicted_strength2-concrete_test$strength)^2)
+```
+
+
+##Problem 2
+
+We have divided the paper into small rectangular cells called glyphs where each glyph denotes a character.
+
+
+
+```{r}
+letters<-read.csv("letterdata.csv")
+str(letters)
+```
+when the glyphs are scanned into the computer, they are converted into pixels and 16 statistical attributes are recorded.
+
+we see that there are no outliers in the dataset so there is no need for tranformation of data. R packages will rescale the data for normalization
+
+Creating training and testing dataset(80:20)
+
+```{r}
+letters_train <- letters[1:16000, ]
+letters_test <- letters[16001:20000, ]
+
+
+#install.packages("kernlab")
+library(kernlab)
+letter_classifier <- ksvm(letter ~ ., data = letters_train,kernel = "vanilladot")
+```
+The paramters of ksvm():  kernel indicate the type of non linear mapping. In this example we are using linear kernel hence "vanilladot"
+
+There are other types of kernels as well like Gaussian RBF kernel which is used by default by ksvm()
+
+C indiates the cost paramter which specifies the cost of violating the constraints i.e. the penalty for soft margin(Default value =1)
+
+
+Evaluating model performance
+
+```{r}
+letter_predictions <- predict(letter_classifier, letters_test)
+
+#tabulating the predcitions
+
+table(letter_predictions, letters_test$letter)
+```
+```{r}
+agreement <- letter_predictions == letters_test$letter
+table(agreement)
+
+prop.table(table(agreement))
+```
+IMproving model performance by using Gaussian RBF kernel
+```{r}
+letter_classifier_rbf <- ksvm(letter ~ ., data = letters_train,
+kernel = "rbfdot")
+letter_predictions_rbf <- predict(letter_classifier_rbf,
+letters_test)
+agreement_rbf <- letter_predictions_rbf == letters_test$letter
+table(agreement_rbf)
+prop.table(table(agreement_rbf))
+```
+Thus we improved model performance from 84% to 93% by using different kernel paramter.
+
+
+##Problem 3
+
+```{r}
+#groceries<-read.csv("groceries.csv")
+
+```
+R created four columns to store the items in the transactional data: V1, V2, V3, and V4. Although this may seem reasonable this, if we use the data in this form, we will encounter problems later may seem reasonable, R chose to create four variables because the first line had exactly four comma-separated values.
+However, we know that grocery purchases can contain more than four items; in
+the four column design such transactions will be broken across multiple rows in
+the matrix. We could try to remedy this by putting the transaction with the largest number of items at the top of the file, but this ignores another more problematic issue.
+
+By structuring data this way, R has constructed a set of features that record not just the items in the transactions, but also the order in which they appear. If we imagine our learning algorithm as an attempt to find a relationship among V1, V2, V3, and V4, then whole milk in V1 might be treated differently than the whole milk appearing in V2. Instead, we need a dataset that does not treat a transaction as set of positions to be filled (or not filled) with specific items, but rather as a market basket that either contains or does not contain each particular item.
+
+We will create a sparse matrix for this purpose Since there is no benefit to storing all these zero values, a sparse matrix does not actually store the full matrix in memory; it only stores the cells that are occupied by an item. This allows the structure to be more memory efficient than an equivalently sized matrix or data frame.
+
+```{r}
+install.packages("arules")
+library(arules)
+groceries <- read.transactions("groceries.csv", sep = ",")
+summary(groceries)
+```
+9835 rows indicate the number of transactions 
+
+Density is the number of non zero cells in the matrix. Since there are 9,835 x 169 = 1,662,115 positions in the matrix, we can calculate that a total of 1,662,115 x 0.02609146 = 43,367 items were purchased during the store's 30 days of operation (ignoring the fact that duplicates of the same items might have been purchased).
+
+Next block indicates most frequent items bought. Milk was purchased 2513 out 9835 transactions which is 26.2% of total transctions.
+
+Element length distribution denotes the number of items per transaction or itemsets. There is one item in 2159 transactions and only one transaction with 32 items.
+
+The mean indicates average number of items per transaction which around 4.409. This value can be calculated manually as well by using the percent of density 43367/9835=4.409
+
+```{r}
+inspect(groceries[1:5])
+
+#to look at contents of the sparse matrix, we can use the inspect() function in combination with the vector operators
+```
+
+```{r}
+itemFrequency(groceries[, 1:3])
+# itemfrequency() allows us to view the support level for the  items in the sparse data (Here for the first 3 items)
+
+#Visual representation of these statitics
+itemFrequencyPlot(groceries, support = 0.1) #supprt=0.1 indicates support of 10%
+
+itemFrequencyPlot(groceries, topN = 20) #topN parameter limits the number of items required to display in the plot (decreasing support of top 20 items)
+
+
+
+```
+
+```{r}
+
+image(groceries[1:5]) #entire view of the sparse matrix using image() function
+#The resulting diagram depicts a matrix with 5 rows and 169 columns, indicating the 5 transactions and 169 possible items we requested
+
+image(sample(groceries, 100)) #sample() function selects random 100 values for visualization
+```
+**Training the model**
+```{r}
+groceryrules <- apriori(groceries, parameter = list(support =0.006, confidence = 0.25, minlen = 2))
+
+summary(groceryrules)
+```
+We'll start with a confidence threshold of 0.25, which means that in order to be
+included in the results, the rule has to be correct at least 25 percent of the time. This will eliminate the most unreliable rules, while allowing some room for us to modify behavior with targeted promotions.
+
+minlength is 2 which indicates that at least 2 items should be present in the transaction
+
+The rule length distribution tells us how many rules have each count of items. In our rule set, 150 rules have only two items, while 297 have three, and 16 have four rules.
+
+The summary of quality measures denote the support, confidence and lift. if most or all of the rules had support and confidence very near the minimum thresholds, this would mean that we may have set the bar too high. This is not the case here, as there are many rules with much higher values of each.
+
+The lift of a rule measures how much more likely one item or itemset is purchased relative to its typical rate of purchase.
+A large lift value is therefore a strong indicator that a rule is important, and reflects a true connection between the items.
+
+```{r}
+inspect(groceryrules[1:3])
+```
+In spite of the fact that the confidence and lift are high, does {potted plants} ??? {whole milk} seem like a very useful rule? Probably not, as there doesn't seem to be a logical reason why someone would be more likely to buy milk with a potted plant.
+
+We will try to improve the performance of the model.
+```{r}
+inspect(sort(groceryrules, by = "lift")[1:5])
+```
+The arules package includes a sort() function that can be used to reorder the list of rules so that the ones with the highest or lowest values of the quality measure come first.
+
+
+Taking subsets of association rules
+
+The subset() function provides a method to search for subsets of transactions,
+items, or rules.
+```{r}
+berryrules <- subset(groceryrules, items %in% "berries")
+
+inspect(berryrules)
+```
+The operator %in% means that at least one of the items must be found in the
+list you defined.
+
+Saving association rules to a file
+
+```{r}
+write(groceryrules, file = "groceryrules.csv",
+sep = ",", quote = TRUE, row.names = FALSE)
+
+groceryrules_df <- as(groceryrules, "data.frame")
+```
+This creates a data frame with the rules in the factor format, and numeric vectors for support, confidence, and lift.
+
+```{r}
+str(groceryrules_df)
+```
+
+
+
+
+
