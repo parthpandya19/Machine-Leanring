@@ -1,15 +1,13 @@
-# Machine-Learning
+# Banking Marketing
+
 
 _Parth Pandya_
 ---
 
 ## PROJECT/ DA 5030
 
-**Bank marketing Dataset**
 
 * Acquiring the dataset
-
-Using the same dataset twice for comparison.
 
 ```{r}
 banking_test<-read.csv("bank_test.csv",sep = ";")
