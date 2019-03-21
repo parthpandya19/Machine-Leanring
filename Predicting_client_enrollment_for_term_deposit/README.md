@@ -1,11 +1,9 @@
 # Machine-Learning
----
-title: "Project"
-output: html_notebook
+
 author: "Parth Pandya"
 ---
 
-#PROJECT\ DA 5030
+## PROJECT/ DA 5030
 
 **Bank marketing Dataset**
 
