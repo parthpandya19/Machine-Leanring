@@ -1,6 +1,6 @@
 # Machine-Learning
 
-author: "Parth Pandya"
+_Parth Pandya_
 ---
 
 ## PROJECT/ DA 5030
