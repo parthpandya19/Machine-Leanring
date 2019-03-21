@@ -95,7 +95,7 @@ hist(sqrt(banking_test$pdays))
 
 
 
-*Replacing "unknown" "nonexitent" cases and imputing them.
+* Replacing "unknown" "nonexitent" cases and imputing them.
 ```{r}
 
 banking_testimpute<-read.csv("bank_test.csv",sep=";",na.strings = c("unknown","nonexistent"))
@@ -220,7 +220,7 @@ For categorical features we do not see much collinearity as it has factored valu
 
 
 
-**PCA **
+**PCA**
 
 This dataset consists of categorical variables hence I have performed PCA on only numeric features of the dataset.
 ```{r}
@@ -237,6 +237,7 @@ biplot(pca)
 
 
 **Creating new feature column**
+
 We will be creating two classes for age i.e. adult and senior citizen
 ```{r}
 table(banking_test$age)
@@ -306,7 +307,7 @@ Kappa statistic=0.5422
 Auc=0.74
 
 
-**Neural network model **
+**Neural network model**
 ```{r}
 nn_model<-train(y~.,data=banking_trainx,method="nnet",trControl=trainControl(method='cv',number=10)) #k-fold cross validation model
 
@@ -348,7 +349,7 @@ Kappa stistic=0.5355
 auc=0.7425
 
 
-**SVM model **
+**SVM model**
 ```{r}
 
 
@@ -366,7 +367,7 @@ Accuracy=90.47
 Kappa= 0.3447
 
 
-**Rule Learner Model **
+**Rule Learner Model**
 ```{r}
 library(RWeka)
 banking_JRip <- JRip(y ~ ., data = banking_trainx)
@@ -413,7 +414,7 @@ Kappa=0.4276
 auc=0.677
 
 
-**Regression Tree model **
+**Regression Tree model**
 
 ```{r}
 library(rpart)
@@ -430,7 +431,7 @@ type = 3, extra = 101)
 
 
 ```
-**Random forest **
+**Random forest**
 
 ```{r}
 ctrl_rf <- trainControl(method = "repeatedcv",
@@ -458,7 +459,7 @@ auc=0.718
 Kappa=0.509
 Accuracy=0.909
 
-**Boosting Decision trees **
+**Boosting Decision trees**
 
 ```{r}
 #install.packages("adabag")
@@ -477,7 +478,7 @@ auc_boost<-auc(predict_boostn,yx)
 ```
 
 
-** Ensemble models (knn,svm)**
+**Ensemble models (knn,svm)**
 
 ```{r}
 control <- trainControl(method="repeatedcv", number=10, repeats=3, savePredictions=TRUE, classProbs=TRUE)
